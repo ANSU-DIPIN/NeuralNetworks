@@ -1,0 +1,95 @@
+##### Neural Networks -------------------
+# Load the data 
+#The fireforest data set is being used 
+
+#by using the factors like wind ,rain, 
+#rh and temperature etc and 
+#predict the aize of burned area.
+#install.packages("kernlab")
+library(kernlab)
+library(caret)
+library(plyr)
+
+# Read the data
+FF <- read.csv(file.choose())
+View(FF)
+class(FF)
+str(FF)
+
+# The area value has lots of zeros
+hist(FF$area)
+
+
+# Transform the Area value to Y 
+FF1 <- mutate(FF, y = log(area + 1))  # default is to the base e, y is lower case
+hist(FF1$y)
+
+summary(FF) # Confirms on the different scale and demands normalizing the data.
+
+# Prediction of Forest fires requires only 
+# prediction from 
+# temperature, rain, relative humidity and wind speed
+# Apply Normalization technique to the whole dataset :
+
+normalize<-function(x){
+  return ( (x-min(x))/(max(x)-min(x)))
+}
+
+FF$temp = normalize(FF$temp)
+FF$RH   = normalize(FF$RH)
+FF$wind = normalize(FF$wind)
+FF$rain = normalize(FF$rain)
+# We need to tweak this as a classification problem.
+# lets base out the Size using this criteria :
+
+attach(FF)
+# Data Partition 
+set.seed(123)
+ind <- sample(2, nrow(FF), replace = TRUE, prob = c(0.7,0.3))
+FF_train <- FF[ind==1,]
+FF_test  <- FF[ind==2,]
+View(FF_train)
+
+
+
+## Training a model on the data ----
+# train the neuralnet model
+#install.packages("neuralnet")
+library(neuralnet)
+
+# simple ANN with only a single hidden neuron
+FF_model <- neuralnet(formula = size_category~temp+rain+wind+RH,
+                            data = FF_train)
+
+
+# visualize the network topology
+plot(FF_model)
+
+## Evaluating model performance 
+
+----
+  # obtain model results
+  
+  #results_model <- NULL
+  FF_test[7:10]
+results_model <- compute(FF_model, FF_test[7:10])
+# obtain predicted strength values
+str(results_model)
+predicted_strength <- results_model$net.result
+predicted_strength
+# examine the correlation between predicted and actual values
+cor(predicted_strength, FF_test$strength)
+
+## Improving model performance ----
+# a more complex neural network topology with 10 hidden neurons
+FF_model2 <- neuralnet(size_category~temp+rain+wind+RH,
+                             data = FF_train, hidden = 10)
+
+
+# plot the network
+plot(FF_model2)
+
+# evaluate the results as we did before
+model_results2 <- compute(as.numeric(FF_model2), as.numeric(FF_test[7:10])
+predicted_strength2 <- model_results2$net.result
+cor(predicted_strength2, FF_test$strength)
